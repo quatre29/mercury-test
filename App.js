@@ -37,7 +37,10 @@ export default function App() {
       console.log(tokenData, "---");
 
       if (Platform.OS === "android") {
-        Notifications.setNotificationChannelAsync();
+        Notifications.setNotificationChannelAsync("default", {
+          name: "default",
+          importance: Notifications.AndroidImportance.HIGH,
+        });
       }
     }
 

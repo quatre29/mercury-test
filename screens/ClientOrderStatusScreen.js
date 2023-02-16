@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Menu } from "../db/menu";
 import { Colors } from "../constants/styles";
 import Recept from "../components/Recept";
-import { storeOrder } from "../utils/api";
+import { sendPushNotificationForOrder, storeOrder } from "../utils/api";
 import { useNavigation } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
 
@@ -22,30 +22,47 @@ const ClientOrderStatusScreen = ({ route }) => {
   const navigation = useNavigation();
 
   useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        const orderStatus = notification.request.content.data.status;
+
+        setBasket((currentBasket) => ({
+          ...currentBasket,
+          status: orderStatus,
+        }));
+      }
+    );
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     const order = route.params?.order;
     const items = Menu.filter((item) => order.items.includes(item.optionId));
     const finalOrder = { items, status: order.status };
     setBasket(finalOrder);
     sendOrder(finalOrder);
-    pushNotification(finalOrder);
+    // pushNotification(finalOrder);
   }, [route]);
 
-  function pushNotification(order) {
-    Notifications.scheduleNotificationAsync({
-      content: {
-        title: "My first local notification",
-        body: "This is the body",
-        data: { order },
-      },
-      trigger: {
-        seconds: 3,
-      },
-    });
-  }
+  // function pushNotification(order) {
+  //   Notifications.scheduleNotificationAsync({
+  //     content: {
+  //       title: "My first local notification",
+  //       body: "This is the body",
+  //       data: { order },
+  //     },
+  //     trigger: {
+  //       seconds: 3,
+  //     },
+  //   });
+  // }
 
   async function sendOrder(order) {
     try {
-      await storeOrder(order);
+      const orderId = await storeOrder(order).then((res) => res.name);
+      sendPushNotificationForOrder(orderId);
     } catch (error) {
       Alert.alert(
         "Something went wrong!",
